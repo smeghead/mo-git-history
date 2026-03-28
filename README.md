@@ -1,6 +1,6 @@
 # mo-git-history
 
-
+single file history viewer. use `mo`.
 
 
 
