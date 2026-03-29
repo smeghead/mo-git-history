@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: mo-git-history <markdown-file>
+
+Open the current file and all committed revisions for <markdown-file> in mo,
+ordered from newest to oldest.
+EOF
+}
+
+fail() {
+  printf 'mo-git-history: %s\n' "$1" >&2
+  exit 1
+}
+
+require_command() {
+  local command_name=$1
+  command -v "$command_name" >/dev/null 2>&1 || fail "required command not found: $command_name"
+}
+
+canonical_path() {
+  local input_path=$1
+  local input_dir
+  local input_base
+
+  input_dir=$(dirname -- "$input_path")
+  input_base=$(basename -- "$input_path")
+  printf '%s/%s\n' "$(cd "$input_dir" && pwd -P)" "$input_base"
+}
+
+port_is_available() {
+  local port=$1
+
+  if command -v ss >/dev/null 2>&1; then
+    ! ss -H -ltn "sport = :$port" | grep -q .
+    return
+  fi
+
+  if command -v netstat >/dev/null 2>&1; then
+    ! netstat -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)$port$"
+    return
+  fi
+
+  ! (echo >"/dev/tcp/127.0.0.1/$port") >/dev/null 2>&1
+}
+
+pick_port() {
+  local candidate
+  local attempts=0
+
+  while [ "$attempts" -lt 100 ]; do
+    candidate=$((49152 + RANDOM % 16384))
+    if port_is_available "$candidate"; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+    attempts=$((attempts + 1))
+  done
+
+  fail 'failed to find an available TCP port for mo'
+}
+
+cleanup() {
+  if [ -n "${temp_dir:-}" ] && [ -d "$temp_dir" ]; then
+    rm -rf -- "$temp_dir"
+  fi
+}
+
+if [ "$#" -ne 1 ]; then
+  usage >&2
+  exit 1
+fi
+
+require_command git
+require_command mo
+
+target_input=$1
+[ -f "$target_input" ] || fail "file not found: $target_input"
+
+target_abs=$(canonical_path "$target_input")
+target_dir=$(dirname -- "$target_abs")
+
+repo_root=$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null) || fail 'target file is not inside a git repository'
+repo_root=$(cd "$repo_root" && pwd -P)
+
+case "$target_abs" in
+  "$repo_root"/*) ;;
+  *) fail 'target file must be inside the git repository root' ;;
+esac
+
+relative_path=${target_abs#"$repo_root"/}
+
+mapfile -t revisions < <(git -C "$repo_root" log --format=%H -- "$relative_path")
+
+if [ "${#revisions[@]}" -eq 0 ]; then
+  fail "no committed history found for $relative_path"
+fi
+
+temp_dir=$(mktemp -d -t mo-git-history.XXXXXX)
+trap cleanup EXIT INT TERM HUP
+
+base_name=$(basename -- "$target_abs")
+declare -a mo_files
+mo_files=("$target_abs")
+
+index=1
+for revision in "${revisions[@]}"; do
+  short_revision=${revision:0:7}
+  printf -v temp_name '%03d-%s-%s' "$index" "$short_revision" "$base_name"
+  temp_path="$temp_dir/$temp_name"
+  git -C "$repo_root" show "$revision:$relative_path" >"$temp_path" || fail "failed to materialize revision $revision for $relative_path"
+  mo_files+=("$temp_path")
+  index=$((index + 1))
+done
+
+port=$(pick_port)
+if mo --foreground -p "$port" "${mo_files[@]}"; then
+  status=0
+else
+  status=$?
+fi
+
+exit "$status"
