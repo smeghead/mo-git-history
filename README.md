@@ -6,9 +6,9 @@ single file history viewer. use `mo`.
 in `mo`, ordered from newest to oldest. The current working tree file is opened
 first, followed by historical snapshots materialized into a temporary directory.
 
-## Video
+## Movie
 
-![usage](docs/usage.mp4)
+https://github.com/smeghead/mo-git-history/docs/usage.mp4
 
 ## Usage
 
