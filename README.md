@@ -8,7 +8,7 @@ first, followed by historical snapshots materialized into a temporary directory.
 
 ## Video
 
-![usage](docs/usage.mkv)
+![usage](docs/usage.mp4)
 
 ## Usage
 
