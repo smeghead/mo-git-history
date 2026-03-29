@@ -8,7 +8,7 @@ first, followed by historical snapshots materialized into a temporary directory.
 
 ## Movie
 
-https://github.com/smeghead/mo-git-history/docs/usage.mp4
+https://github.com/user-attachments/assets/829caa5a-2ed8-4348-b855-33f7774ca2b0
 
 ## Usage
 
