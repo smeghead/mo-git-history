@@ -10,6 +10,22 @@ first, followed by historical snapshots materialized into a temporary directory.
 
 https://github.com/user-attachments/assets/829caa5a-2ed8-4348-b855-33f7774ca2b0
 
+## Installation
+
+`mo-git-history` is a single Bash script.  
+Just place it in a directory included in your `$PATH` and make it executable.
+
+For example, you can install it to `/usr/local/bin` like this:
+
+```bash
+sudo curl -o /usr/local/bin/mo-git-history \
+  https://raw.githubusercontent.com/smeghead/mo-git-history/refs/heads/main/mo-git-history
+sudo chmod +x /usr/local/bin/mo-git-history
+```
+
+> [!NOTE]
+> Adjust the install path depending on your environment.
+
 ## Usage
 
 ```bash
